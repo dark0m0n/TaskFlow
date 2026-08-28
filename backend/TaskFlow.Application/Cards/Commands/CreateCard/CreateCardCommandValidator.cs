@@ -6,7 +6,7 @@ public class CreateCardCommandValidator : AbstractValidator<CreateCardCommand>
 {
     public CreateCardCommandValidator()
     {
-        RuleFor(v => v.ColunmId)
+        RuleFor(v => v.ColumnId)
             .NotEmpty().WithMessage("ColunmId required");
 
         RuleFor(v => v.Title)

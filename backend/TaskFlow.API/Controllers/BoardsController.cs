@@ -6,6 +6,7 @@ using TaskFlow.Application.Boards.Commands.CreateBoard;
 using TaskFlow.Application.Boards.Commands.DeleteBoardMember;
 using TaskFlow.Application.Boards.Commands.UpdateBoardMemberRole;
 using TaskFlow.Application.Boards.Queries.GetBoardById;
+using TaskFlow.Application.Boards.Queries.GetUserBoards;
 using TaskFlow.Application.Columns.Commands.CreateColumn;
 using TaskFlow.Domain.Entities;
 
@@ -27,10 +28,10 @@ public class BoardsController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = boardId }, new { Id = boardId });
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{boardId:int}")]
+    public async Task<IActionResult> GetById(int boardId)
     {
-        var query = new GetBoardByIdQuery(id);
+        var query = new GetBoardByIdQuery(boardId);
         var board = await _mediator.Send(query);
 
         if (board == null)
@@ -73,6 +74,15 @@ public class BoardsController(IMediator mediator) : ControllerBase
         var column = await _mediator.Send(command);
 
         return Ok(column);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetUserBoards()
+    {
+        var query = new GetUserBoardsQuery();
+        var boards = await _mediator.Send(query);
+
+        return Ok(boards);
     }
 }
 

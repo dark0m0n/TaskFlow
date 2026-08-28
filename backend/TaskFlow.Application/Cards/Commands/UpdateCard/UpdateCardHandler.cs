@@ -4,55 +4,47 @@ using TaskFlow.Application.Cards.DTOs;
 using TaskFlow.Application.Common.Interfaces;
 using TaskFlow.Domain.Entities;
 
-namespace TaskFlow.Application.Cards.Commands.CreateCard;
+namespace TaskFlow.Application.Cards.Commands.UpdateCard;
 
-public class CreateCardHandler(
+public class UpdateCardHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
     IBoardAuthorizationService authorizationService
-) : IRequestHandler<CreateCardCommand, CardDto>
+) : IRequestHandler<UpdateCardCommand, CardDto>
 {
     private readonly IApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IBoardAuthorizationService _authorizationService = authorizationService;
 
-    public async Task<CardDto> Handle(CreateCardCommand request, CancellationToken cancellationToken)
+    public async Task<CardDto> Handle(UpdateCardCommand request, CancellationToken cancellationToken)
     {
         var currentUserId = _currentUserService.UserId
             ?? throw new UnauthorizedAccessException("User is not authenticated");
 
-        var column = await _context.Columns
-            .FirstOrDefaultAsync(c => c.Id == request.ColumnId, cancellationToken)
-            ?? throw new KeyNotFoundException("Column not found");
-        
-        var hasAccess = await _authorizationService.HasAccessAsync(column.BoardId, currentUserId, BoardRole.Member);
+        var card = await _context.Cards
+            .Include(c => c.Column)
+            .FirstOrDefaultAsync(c => c.Id == request.CardId, cancellationToken)
+            ?? throw new KeyNotFoundException("Card not found");
+
+        var hasAccess = await _authorizationService.HasAccessAsync(card.Column.BoardId, currentUserId, BoardRole.Member);
         if (!hasAccess)
-            throw new UnauthorizedAccessException("Only board members can create cards");
+            throw new UnauthorizedAccessException("Only board members can edit cards");
 
         if (!string.IsNullOrWhiteSpace(request.AssigneeId))
         {
             var isAssigneeMember = await _context.BoardMembers
-                .AnyAsync(m => m.BoardId == column.BoardId && m.UserId == request.AssigneeId, cancellationToken);
+                .AnyAsync(m => m.BoardId == card.Column.BoardId && m.UserId == request.AssigneeId, cancellationToken);
             if (!isAssigneeMember)
                 throw new InvalidOperationException("Assignee must be a member of this board");
         }
-        
-        var maxOrder = await _context.Cards
-            .Where(c => c.ColumnId == request.ColumnId)
-            .MaxAsync(c => (int?)c.Order, cancellationToken) ?? 0;
 
-        var card = new Card
-        {
-            Title = request.Title,
-            Description = request.Description,
-            Priority = request.Priority,
-            DueDate = request.DueDate,
-            Order = maxOrder + 1,
-            ColumnId = request.ColumnId,
-            AssigneeId = request.AssigneeId
-        };
+        card.Title = request.Title;
+        card.Description = request.Description;
+        card.Priority = request.Priority;
+        card.DueDate = request.DueDate;
+        card.AssigneeId = request.AssigneeId;
 
-        _context.Cards.Add(card);
+        _context.Cards.Update(card);
         await _context.SaveChangesAsync(cancellationToken);
 
         return new CardDto

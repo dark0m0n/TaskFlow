@@ -15,28 +15,35 @@ public class ColumnsController(IMediator mediator) : ControllerBase
 {
     private readonly IMediator _mediator = mediator;
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> UpdateColumn(int id, [FromBody] UpdateColumnRequest request)
+    [HttpPut("{columnId:int}")]
+    public async Task<IActionResult> UpdateColumn(int columnId, [FromBody] UpdateColumnRequest request)
     {
-        var command = new UpdateColumnCommand(id, request.Title, request.Order);
+        var command = new UpdateColumnCommand(columnId, request.Title, request.Order);
         var column = await _mediator.Send(command);
 
         return Ok(column);
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteColumn(int id)
+    [HttpDelete("{columnId:int}")]
+    public async Task<IActionResult> DeleteColumn(int columnId)
     {
-        var command = new DeleteColumnCommand(id);
+        var command = new DeleteColumnCommand(columnId);
         await _mediator.Send(command);
 
         return Ok(new { Message = "Column removed successfully" });
     }
 
-    [HttpPost("{id:int}/cards")]
-    public async Task<IActionResult> CreateCard(int id, [FromBody] CreateCardRequest request)
+    [HttpPost("{columnId:int}/cards")]
+    public async Task<IActionResult> CreateCard(int columnId, [FromBody] CreateCardRequest request)
     {
-        var command = new CreateCardCommand(id, request.Title, request.Description, request.Priority, request.DueDate);
+        var command = new CreateCardCommand(
+            columnId,
+            request.Title, 
+            request.Description, 
+            request.Priority, 
+            request.DueDate, 
+            request.AssigneeId
+        );
         var card = await _mediator.Send(command);
 
         return Ok(card);
@@ -44,4 +51,10 @@ public class ColumnsController(IMediator mediator) : ControllerBase
 }
 
 public record UpdateColumnRequest(string Title, int Order);
-public record CreateCardRequest(string Title, string Description, PriorityLevel Priority, DateTime? DueDate);
+public record CreateCardRequest(
+    string Title,
+    string Description,
+    PriorityLevel Priority,
+    DateTime? DueDate,
+    string? AssigneeId = null
+);
