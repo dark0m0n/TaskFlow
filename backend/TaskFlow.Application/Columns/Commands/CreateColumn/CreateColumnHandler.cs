@@ -9,12 +9,14 @@ namespace TaskFlow.Application.Columns.Commands.CreateColumn;
 public class CreateColumnHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
-    IBoardAuthorizationService authorizationService
+    IBoardAuthorizationService authorizationService,
+    IActivityLogger activityLogger
 ) : IRequestHandler<CreateColumnCommand, ColumnDto>
 {
     private readonly IApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IBoardAuthorizationService _authorizationService = authorizationService;
+    private readonly IActivityLogger _activityLogger = activityLogger;
 
     public async Task<ColumnDto> Handle(CreateColumnCommand request, CancellationToken cancellationToken)
     {
@@ -38,6 +40,8 @@ public class CreateColumnHandler(
 
         _context.Columns.Add(column);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _activityLogger.LogAsync(request.BoardId, "ColumnCreated", $"Created column '{column.Title}'", cancellationToken);
 
         return new ColumnDto
         {

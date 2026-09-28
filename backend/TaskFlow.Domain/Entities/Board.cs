@@ -11,4 +11,5 @@ public class Board
     // Navigation properties
     public List<Column> Columns { get; set; } = [];
     public List<BoardMember> Members { get; set; } = [];
+    public List<ActivityLog> ActivityLogs { get; set; } = [];
 }

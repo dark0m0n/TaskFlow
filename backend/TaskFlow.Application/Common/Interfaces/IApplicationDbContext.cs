@@ -10,6 +10,7 @@ public interface IApplicationDbContext
     DbSet<Column> Columns { get; }
     DbSet<Card> Cards { get; }
     DbSet<Comment> Comments { get; }
+    DbSet<ActivityLog> ActivityLogs { get; }
     DbSet<AppUser> Users { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

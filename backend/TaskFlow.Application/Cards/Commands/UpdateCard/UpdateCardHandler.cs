@@ -9,12 +9,14 @@ namespace TaskFlow.Application.Cards.Commands.UpdateCard;
 public class UpdateCardHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
-    IBoardAuthorizationService authorizationService
+    IBoardAuthorizationService authorizationService,
+    IActivityLogger activityLogger
 ) : IRequestHandler<UpdateCardCommand, CardDto>
 {
     private readonly IApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IBoardAuthorizationService _authorizationService = authorizationService;
+    private readonly IActivityLogger _activityLogger = activityLogger;
 
     public async Task<CardDto> Handle(UpdateCardCommand request, CancellationToken cancellationToken)
     {
@@ -46,6 +48,8 @@ public class UpdateCardHandler(
 
         _context.Cards.Update(card);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _activityLogger.LogAsync(card.Column.BoardId, "CardUpdated", $"Updated card '{card.Title}'", cancellationToken);
 
         return new CardDto
         {

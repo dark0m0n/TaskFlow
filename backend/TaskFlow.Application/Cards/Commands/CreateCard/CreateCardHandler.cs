@@ -9,12 +9,14 @@ namespace TaskFlow.Application.Cards.Commands.CreateCard;
 public class CreateCardHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
-    IBoardAuthorizationService authorizationService
+    IBoardAuthorizationService authorizationService,
+    IActivityLogger activityLogger
 ) : IRequestHandler<CreateCardCommand, CardDto>
 {
     private readonly IApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IBoardAuthorizationService _authorizationService = authorizationService;
+    private readonly IActivityLogger _activityLogger = activityLogger;
 
     public async Task<CardDto> Handle(CreateCardCommand request, CancellationToken cancellationToken)
     {
@@ -54,6 +56,8 @@ public class CreateCardHandler(
 
         _context.Cards.Add(card);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _activityLogger.LogAsync(column.BoardId, "CardCreated", $"Created card '{card.Title}'", cancellationToken);
 
         return new CardDto
         {

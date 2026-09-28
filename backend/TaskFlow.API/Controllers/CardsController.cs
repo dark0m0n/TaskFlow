@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Application.Cards.Commands.DeleteCard;
+using TaskFlow.Application.Cards.Commands.MoveCard;
 using TaskFlow.Application.Cards.Commands.UpdateCard;
 using TaskFlow.Application.Comments.Commands.CreateComment;
 using TaskFlow.Application.Comments.Queries.GetAllComments;
@@ -58,8 +59,17 @@ public class CardsController(IMediator mediator) : ControllerBase
 
         return Ok(comments);
     }
+    [HttpPut("{cardId:int}/move")]
+    public async Task<IActionResult> MoveCard(int cardId, [FromBody] MoveCardRequest request)
+    {
+        var command = new MoveCardCommand(cardId, request.TargetColumnId, request.NewOrder);
+        var card = await _mediator.Send(command);
+
+        return Ok(card);
+    }
 }
 
+public record MoveCardRequest(int TargetColumnId, int NewOrder);
 public record UpdateCardRequest(
     string Title, 
     string Description, 

@@ -9,12 +9,14 @@ namespace TaskFlow.Application.Comments.Commands.CreateComment;
 public class CreateCommentHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
-    IBoardAuthorizationService authorizationService
+    IBoardAuthorizationService authorizationService,
+    IActivityLogger activityLogger
 ) : IRequestHandler<CreateCommentCommand, CommentDto>
 {
     private readonly IApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IBoardAuthorizationService _authorizationService = authorizationService;
+    private readonly IActivityLogger _activityLogger = activityLogger;
 
     public async Task<CommentDto> Handle(CreateCommentCommand request, CancellationToken cancellationToken)
     {
@@ -39,6 +41,8 @@ public class CreateCommentHandler(
 
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _activityLogger.LogAsync(card.Column.BoardId, "CommentAdded", $"Added comment to card '{card.Title}'", cancellationToken);
 
         return new CommentDto
         {

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Application.Activities.Queries.GetBoardActivity;
 using TaskFlow.Application.Boards.Commands.AddBoardMember;
 using TaskFlow.Application.Boards.Commands.CreateBoard;
 using TaskFlow.Application.Boards.Commands.DeleteBoardMember;
@@ -25,7 +26,7 @@ public class BoardsController(IMediator mediator) : ControllerBase
         var command = new CreateBoardCommand(request.Title, request.Description);
         var boardId = await _mediator.Send(command);
 
-        return CreatedAtAction(nameof(GetById), new { id = boardId }, new { Id = boardId });
+        return CreatedAtAction(nameof(GetById), new { boardId = boardId }, new { Id = boardId });
     }
 
     [HttpGet("{boardId:int}")]
@@ -83,6 +84,15 @@ public class BoardsController(IMediator mediator) : ControllerBase
         var boards = await _mediator.Send(query);
 
         return Ok(boards);
+    }
+
+    [HttpGet("{boardId:int}/activity")]
+    public async Task<IActionResult> GetActivity(int boardId, [FromQuery] int limit = 20)
+    {
+        var query = new GetBoardActivityQuery(boardId, limit);
+        var activities = await _mediator.Send(query);
+
+        return Ok(activities);
     }
 }
 

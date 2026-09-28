@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using TaskFlow.Application.Common.Behaviors;
 using TaskFlow.Application.Common.Interfaces;
 using TaskFlow.Domain.Entities;
@@ -14,7 +15,15 @@ using TaskFlow.Infrastructure.Data;
 using TaskFlow.Infrastructure.Hubs;
 using TaskFlow.Infrastructure.Services;
 
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("logs/taskflow-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -99,11 +108,14 @@ builder.Services.AddValidatorsFromAssembly(typeof(IApplicationDbContext).Assembl
 
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(IApplicationDbContext).Assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 });
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IBoardAuthorizationService, BoardAuthorizationService>();
+builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 
 // Adding SignalR into DI
 builder.Services.AddSignalR();

@@ -8,12 +8,14 @@ namespace TaskFlow.Application.Boards.Commands.AddBoardMember;
 class AddBoardMemberHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUserService,
-    IBoardAuthorizationService authorizationService
+    IBoardAuthorizationService authorizationService,
+    IActivityLogger activityLogger
 ) : IRequestHandler<AddBoardMemberCommand, bool>
 {
     private readonly IApplicationDbContext _context = context;
     private readonly ICurrentUserService _currentUserService = currentUserService;
     private readonly IBoardAuthorizationService _authorizationService = authorizationService;
+    private readonly IActivityLogger _activityLogger = activityLogger;
 
     public async Task<bool> Handle(AddBoardMemberCommand request, CancellationToken cancellationToken)
     {
@@ -43,6 +45,8 @@ class AddBoardMemberHandler(
 
         _context.BoardMembers.Add(member);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _activityLogger.LogAsync(request.BoardId, "MemberAdded", $"Added member '{targetUser.Email}' as {request.Role}", cancellationToken);
 
         return true;
     }
