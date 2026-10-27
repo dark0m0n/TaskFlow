@@ -136,6 +136,14 @@ builder.Services.AddHostedService<ExpiredCardsCheckWorker>();
 
 var app = builder.Build();
 
+// Docker Compose enables this only for the single-instance local development stack.
+if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Database:ApplyMigrations"))
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<TaskFlowDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
+
 app.UseCors("CorsPolicy");
 
 // Configure the HTTP request pipeline.
