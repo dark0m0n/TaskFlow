@@ -5,12 +5,39 @@ import 'package:taskflow/core/network/api_client.dart';
 import 'package:taskflow/core/auth/session_store.dart';
 import 'package:taskflow/features/boards/presentation/boards_providers.dart';
 
-class BoardListScreen extends ConsumerWidget {
+class BoardListScreen extends ConsumerStatefulWidget {
   const BoardListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final boards = ref.watch(boardsProvider);
+  ConsumerState<BoardListScreen> createState() => _BoardListScreenState();
+}
+
+class _BoardListScreenState extends ConsumerState<BoardListScreen> {
+  bool _signingOut = false;
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    setState(() => _signingOut = true);
+    try {
+      await ref.read(sessionStoreProvider.notifier).signOut();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не вдалося вийти. Спробуйте ще раз.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = ref.watch(sessionStoreProvider).asData?.value;
+    if (session is! SignedIn) return const SizedBox.shrink();
+
+    final key = boardsProvider(session.generation);
+    final boards = ref.watch(key);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,12 +45,12 @@ class BoardListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Оновити',
-            onPressed: () => ref.invalidate(boardsProvider),
+            onPressed: () => ref.invalidate(key),
             icon: const Icon(Icons.refresh),
           ),
           IconButton(
             tooltip: 'Вийти',
-            onPressed: () => ref.read(sessionStoreProvider.notifier).signOut(),
+            onPressed: _signingOut ? null : _signOut,
             icon: const Icon(Icons.logout),
           ),
         ],
@@ -37,7 +64,7 @@ class BoardListScreen extends ConsumerWidget {
               Text(userFacingError(error)),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: () => ref.invalidate(boardsProvider),
+                onPressed: () => ref.invalidate(key),
                 child: const Text('Повторити'),
               ),
             ],
@@ -48,7 +75,7 @@ class BoardListScreen extends ConsumerWidget {
             return const Center(child: Text('У вас ще немає дощок.'));
           }
           return RefreshIndicator(
-            onRefresh: () async => ref.refresh(boardsProvider.future),
+            onRefresh: () async => ref.refresh(key.future),
             child: ListView.builder(
               itemCount: items.length,
               itemBuilder: (context, index) {

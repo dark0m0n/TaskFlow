@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:taskflow/core/auth/session_store.dart';
 import 'package:taskflow/core/network/api_client.dart';
 import 'package:taskflow/features/boards/presentation/boards_providers.dart';
 
@@ -11,7 +12,11 @@ class BoardDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final board = ref.watch(boardProvider(boardId));
+    final session = ref.watch(sessionStoreProvider).asData?.value;
+    if (session is! SignedIn) return const SizedBox.shrink();
+
+    final key = (boardId: boardId, generation: session.generation);
+    final board = ref.watch(boardProvider(key));
 
     return Scaffold(
       appBar: AppBar(
@@ -25,7 +30,7 @@ class BoardDetailScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Оновити',
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(boardProvider(boardId)),
+            onPressed: () => ref.invalidate(boardProvider(key)),
           ),
         ],
       ),
@@ -38,7 +43,7 @@ class BoardDetailScreen extends ConsumerWidget {
               Text(userFacingError(error)),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: () => ref.invalidate(boardProvider(boardId)),
+                onPressed: () => ref.invalidate(boardProvider(key)),
                 child: const Text('Повторити'),
               ),
             ],
