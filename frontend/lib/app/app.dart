@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:taskflow/features/auth/presentation/login_screen.dart';
-import 'package:taskflow/features/auth/presentation/session_controller.dart';
+import 'package:taskflow/core/auth/session_store.dart';
 import 'package:taskflow/features/boards/presentation/board_detail_screen.dart';
 import 'package:taskflow/features/boards/presentation/board_list_screen.dart';
 
@@ -54,13 +54,42 @@ class SessionGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(sessionControllerProvider);
+    final session = ref.watch(sessionStoreProvider);
     return session.when(
-      data: (signedIn) => signedIn ? child : const LoginScreen(),
+      data: (value) => switch (value) {
+        SignedIn() => child,
+        SignedOut(:final reason) => LoginScreen(
+          sessionExpired: reason == SignOutReason.expired,
+        ),
+      },
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, _) => Scaffold(
-        body: Center(child: Text('Не вдалося відкрити сесію: $error')),
+      error: (_, _) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Не вдалося відкрити збережену сесію.'),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () async {
+                  try {
+                    await ref.read(sessionStoreProvider.notifier).signOut();
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Не вдалося очистити локальну сесію.'),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Очистити сесію'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

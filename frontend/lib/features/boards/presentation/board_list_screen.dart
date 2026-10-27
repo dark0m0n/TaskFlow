@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:taskflow/core/network/api_client.dart';
-import 'package:taskflow/features/auth/presentation/session_controller.dart';
+import 'package:taskflow/core/auth/session_store.dart';
 import 'package:taskflow/features/boards/presentation/boards_providers.dart';
 
 class BoardListScreen extends ConsumerWidget {
@@ -23,8 +23,7 @@ class BoardListScreen extends ConsumerWidget {
           ),
           IconButton(
             tooltip: 'Вийти',
-            onPressed: () =>
-                ref.read(sessionControllerProvider.notifier).logout(),
+            onPressed: () => ref.read(sessionStoreProvider.notifier).signOut(),
             icon: const Icon(Icons.logout),
           ),
         ],

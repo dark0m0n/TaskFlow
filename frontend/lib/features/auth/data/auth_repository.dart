@@ -1,20 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:taskflow/core/auth/token_storage.dart';
 import 'package:taskflow/core/network/api_client.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    ref.watch(dioProvider),
-    ref.watch(tokenStorageProvider),
-  );
+  return AuthRepository(ref.watch(dioProvider));
 });
 
 class AuthRepository {
-  AuthRepository(this._dio, this._tokenStorage);
+  AuthRepository(this._dio);
 
   final Dio _dio;
-  final TokenStorage _tokenStorage;
 
   Future<void> register(String email, String password) async {
     await _dio.post<void>(
@@ -23,7 +18,7 @@ class AuthRepository {
     );
   }
 
-  Future<void> login(String email, String password) async {
+  Future<String> login(String email, String password) async {
     final response = await _dio.post<Map<String, dynamic>>(
       'account/login',
       data: {'email': email, 'password': password},
@@ -32,8 +27,6 @@ class AuthRepository {
     if (token is! String || token.isEmpty) {
       throw const FormatException('Login response did not contain a token');
     }
-    await _tokenStorage.writeToken(token);
+    return token;
   }
-
-  Future<void> logout() => _tokenStorage.deleteToken();
 }

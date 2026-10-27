@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:taskflow/core/network/api_client.dart';
-import 'package:taskflow/features/auth/presentation/session_controller.dart';
+import 'package:taskflow/features/auth/presentation/auth_actions.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({this.sessionExpired = false, super.key});
+
+  final bool sessionExpired;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -33,13 +35,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      final session = ref.read(sessionControllerProvider.notifier);
+      final actions = ref.read(authActionsProvider);
       final email = _emailController.text.trim();
       final password = _passwordController.text;
       if (_registering) {
-        await session.registerAndLogin(email, password);
+        await actions.registerAndLogin(email, password);
       } else {
-        await session.login(email, password);
+        await actions.login(email, password);
       }
     } catch (error) {
       if (mounted) setState(() => _error = userFacingError(error));
@@ -67,6 +69,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(_registering ? 'Створити обліковий запис' : 'Увійти'),
+                  if (widget.sessionExpired) ...[
+                    const SizedBox(height: 8),
+                    const Text('Сесія завершилася. Увійдіть знову.'),
+                  ],
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _emailController,
