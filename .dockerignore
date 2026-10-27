@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/.dart_tool/
+**/build/
+**/.git/
+**/.idea/
+**/.vs/
+frontend/
+docs/
+.env
+.env.*
+README.md

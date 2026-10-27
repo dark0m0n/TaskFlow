@@ -1,18 +1,50 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: dotnet_postgres
-    restart: always
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: taskflowdb
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypassword}
+      POSTGRES_DB: ${POSTGRES_DB:-taskflowdb}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: taskflow_redis
-    restart: always
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-taskflowdb};Username=${POSTGRES_USER:-myuser};Password=${POSTGRES_PASSWORD:-mypassword}
+      ConnectionStrings__Redis: redis:6379
+      JWT__Issuer: ${JWT_ISSUER:-http://localhost:5079}
+      JWT__Audience: ${JWT_AUDIENCE:-http://localhost:5079}
+      JWT__SigningKey: ${JWT_SIGNING_KEY:-TaskFlowLocalDevelopmentSigningKeyAtLeast32Bytes!}
+      Database__ApplyMigrations: "true"
+    ports:
+      - "${API_PORT:-5079}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

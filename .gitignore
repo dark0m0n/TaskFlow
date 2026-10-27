@@ -1,20 +1,30 @@
-## Ignore Visual Studio / .NET temporary build files
+# .NET and IDE output
 [Bb]in/
 [Oo]bj/
 .vs/
 .idea/
+.vscode/
 *.user
 *.userosscache
 *.sln.docstates
 
-## OS Generated Files
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+**/android/local.properties
+**/android/key.properties
+*.jks
+*.keystore
+
+# Flutter generated output (frontend/.gitignore has platform details)
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/build/
+**/coverage/
+
+# OS and logs
 .DS_Store
 Thumbs.db
-
-## Log files
 *.log
-
-## User secrets / local overrides
-appsettings.Development.json
-
-todo
