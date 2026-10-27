@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:taskflow/core/auth/token_storage.dart';
+import 'package:taskflow/core/auth/session_store.dart';
 import 'package:taskflow/core/config/app_config.dart';
 
 final dioProvider = Provider<Dio>((ref) {
@@ -17,9 +17,9 @@ final dioProvider = Provider<Dio>((ref) {
     InterceptorsWrapper(
       onRequest: (options, handler) async {
         try {
-          final token = await ref.read(tokenStorageProvider).readToken();
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
+          final session = await ref.read(sessionStoreProvider.future);
+          if (session is SignedIn) {
+            options.headers['Authorization'] = 'Bearer ${session.token}';
           }
           handler.next(options);
         } catch (error) {
