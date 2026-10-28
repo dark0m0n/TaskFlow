@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,11 +12,19 @@ import 'package:taskflow/features/auth/data/auth_repository.dart';
 import 'package:taskflow/features/auth/presentation/auth_actions.dart';
 
 class FakeTokenStorage implements TokenStorage {
-  FakeTokenStorage({this.token, this.failRead = false, this.failWrite = false});
+  FakeTokenStorage({
+    this.token,
+    this.failRead = false,
+    this.failWrite = false,
+    this.failDelete = false,
+    this.writeBarrier,
+  });
 
   String? token;
   bool failRead;
   bool failWrite;
+  bool failDelete;
+  Completer<void>? writeBarrier;
   int readCount = 0;
 
   @override
@@ -26,12 +36,14 @@ class FakeTokenStorage implements TokenStorage {
 
   @override
   Future<void> writeToken(String value) async {
+    await writeBarrier?.future;
     if (failWrite) throw StateError('write failed');
     token = value;
   }
 
   @override
   Future<void> deleteToken() async {
+    if (failDelete) throw StateError('delete failed');
     token = null;
   }
 }
@@ -118,6 +130,76 @@ void main() {
     expect(session, isA<SignedOut>());
     expect((session as SignedOut).reason, SignOutReason.userLogout);
   });
+
+  test(
+    'failed deletion keeps the persisted and active session intact',
+    () async {
+      final storage = FakeTokenStorage(token: 'saved-token', failDelete: true);
+      final container = containerWith(storage);
+      addTearDown(container.dispose);
+      await container.read(sessionStoreProvider.future);
+
+      await expectLater(
+        container.read(sessionStoreProvider.notifier).signOut(),
+        throwsStateError,
+      );
+
+      expect(storage.token, 'saved-token');
+      expect(
+        container.read(sessionStoreProvider).asData?.value,
+        isA<SignedIn>(),
+      );
+    },
+  );
+
+  test('concurrent sign in and sign out finish in invocation order', () async {
+    final barrier = Completer<void>();
+    final storage = FakeTokenStorage(writeBarrier: barrier);
+    final container = containerWith(storage);
+    addTearDown(container.dispose);
+    await container.read(sessionStoreProvider.future);
+    final store = container.read(sessionStoreProvider.notifier);
+
+    final signingIn = store.signIn('new-token');
+    final signingOut = store.signOut();
+    barrier.complete();
+    await Future.wait([signingIn, signingOut]);
+
+    expect(storage.token, isNull);
+    expect(
+      container.read(sessionStoreProvider).asData?.value,
+      isA<SignedOut>(),
+    );
+  });
+
+  test(
+    'old generation cannot clear a newer session with the same token',
+    () async {
+      final storage = FakeTokenStorage();
+      final container = containerWith(storage);
+      addTearDown(container.dispose);
+      await container.read(sessionStoreProvider.future);
+      final store = container.read(sessionStoreProvider.notifier);
+
+      await store.signIn('same-token');
+      final oldSession =
+          container.read(sessionStoreProvider).asData!.value as SignedIn;
+      await store.signOut();
+      await store.signIn('same-token');
+      final newSession =
+          container.read(sessionStoreProvider).asData!.value as SignedIn;
+
+      final cleared = await store.signOutIfCurrent(
+        token: oldSession.token,
+        generation: oldSession.generation,
+      );
+
+      expect(cleared, isFalse);
+      expect(newSession.generation, isNot(oldSession.generation));
+      expect(store.isCurrent(newSession), isTrue);
+      expect(storage.token, 'same-token');
+    },
+  );
 
   test('can clear storage after startup read fails', () async {
     final storage = FakeTokenStorage(token: 'stale-token', failRead: true);
